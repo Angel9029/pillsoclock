@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "188965664975",
+    "project_id": "pillsoclock-ae4ee",
+    "storage_bucket": "pillsoclock-ae4ee.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:188965664975:android:c44403061cce9c4e555fba",
+        "android_client_info": {
+          "package_name": "com.example.pillsoclock"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAtrtkwPXMpTBu1imfucHaIahTpPieEh4s"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
