@@ -30,9 +30,9 @@ class _PatientHomeState extends State<PatientHome> {
         onTap: (index) => setState(() => _currentIndex = index),
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.alarm), label: 'Recordatorios', backgroundColor: Colors.blue),
-          BottomNavigationBarItem(icon: Icon(Icons.show_chart), label: 'Progreso'),
-          BottomNavigationBarItem(icon: Icon(Icons.people), label: 'Solicitudes'),
-          BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Ajustes'),
+          BottomNavigationBarItem(icon: Icon(Icons.show_chart), label: 'Progreso', backgroundColor: Colors.blue),
+          BottomNavigationBarItem(icon: Icon(Icons.people), label: 'Solicitudes', backgroundColor: Colors.blue),
+          BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Ajustes', backgroundColor: Colors.blue),
         ],
       ),
     );

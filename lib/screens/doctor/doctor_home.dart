@@ -1,26 +1,43 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../../providers/auth_provider.dart';
+import 'doctor_patients_screen.dart';
+import 'doctor_reminders_screen.dart';
+import 'doctor_settings_screen.dart';
 
-class DoctorHome extends StatelessWidget {
-  const DoctorHome({super.key});
+class DoctorHome extends StatefulWidget {
+  final String doctorId;
+  const DoctorHome({super.key, required this.doctorId});
+
+  @override
+  State<DoctorHome> createState() => _DoctorHomeState();
+}
+
+class _DoctorHomeState extends State<DoctorHome> {
+  int _currentIndex = 0;
+
   @override
   Widget build(BuildContext context) {
-    final auth = context.read<AuthProviderLocal>();
+    final screens = [
+      DoctorPatientsScreen(doctorId: widget.doctorId),
+      DoctorRemindersScreen(doctorId: widget.doctorId),
+      const DoctorSettingsScreen(),
+    ];
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Médico')),
-      body: Center(
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          const Icon(Icons.medical_services_rounded, size: 72, color: Colors.teal),
-          const SizedBox(height: 12),
-          const Text('Panel Médico', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 12),
-          ElevatedButton.icon(
-            onPressed: () => auth.logout(),
-            icon: const Icon(Icons.logout),
-            label: const Text('Cerrar sesión'),
-          )
-        ]),
+      body: screens[_currentIndex],
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentIndex,
+        onTap: (i) => setState(() => _currentIndex = i),
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.people), label: 'Pacientes'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.medical_information),
+            label: 'Recordatorios',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.settings),
+            label: 'Configuración',
+          ),
+        ],
       ),
     );
   }

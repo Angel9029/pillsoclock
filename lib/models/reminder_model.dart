@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class ReminderModel {
   final String id;
   final String userId;
+  final String? doctorId;
   final String name;
   final String description;
   final List<String> times;
@@ -14,54 +15,58 @@ class ReminderModel {
   ReminderModel({
     required this.id,
     required this.userId,
+    this.doctorId,
     required this.name,
     required this.description,
     required this.times,
     required this.startDate,
-    required this.endDate,
+    this.endDate,
     required this.takenDates,
-    this.immutable = false,
+    required this.immutable,
   });
 
-  factory ReminderModel.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>? ?? {};
-
-    DateTime? _toDate(dynamic value) {
-      if (value == null) return null;
-      if (value is Timestamp) return value.toDate();
-      if (value is String) return DateTime.tryParse(value);
-      return null;
-    }
-
+  // Método copyWith
+  ReminderModel copyWith({
+    String? id,
+    String? userId,
+    String? doctorId,
+    String? name,
+    String? description,
+    List<String>? times,
+    DateTime? startDate,
+    DateTime? endDate,
+    List<DateTime>? takenDates,
+    bool? immutable,
+  }) {
     return ReminderModel(
-      id: doc.id,
-      userId: data['userId'] ?? '',
-      name: data['name'] ?? '',
-      description: data['description'] ?? '',
-      times:
-          (data['times'] as List<dynamic>?)
-              ?.map((e) => e.toString())
-              .toList() ??
-          [],
-      startDate: _toDate(data['startDate']) ?? DateTime.now(),
-      endDate: _toDate(data['endDate']),
-      takenDates:
-          (data['takenDates'] as List<dynamic>?)
-              ?.map((e) => _toDate(e) ?? DateTime.now())
-              .toList() ??
-          [],
-      immutable: data['immutable'] ?? false,
+      id: id ?? this.id,
+      userId: userId ?? this.userId,
+      doctorId: doctorId ?? this.doctorId,
+      name: name ?? this.name,
+      description: description ?? this.description,
+      times: times ?? this.times,
+      startDate: startDate ?? this.startDate,
+      endDate: endDate ?? this.endDate,
+      takenDates: takenDates ?? this.takenDates,
+      immutable: immutable ?? this.immutable,
     );
   }
 
-  Map<String, dynamic> toFirestore() => {
-    'userId': userId,
-    'name': name,
-    'description': description,
-    'times': times,
-    'startDate': Timestamp.fromDate(startDate),
-    'endDate': endDate != null ? Timestamp.fromDate(endDate!) : null,
-    'takenDates': takenDates.map((d) => Timestamp.fromDate(d)).toList(),
-    'immutable': immutable,
-  };
+  factory ReminderModel.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    return ReminderModel(
+      id: doc.id,
+      userId: data['userId'],
+      doctorId: data['doctorId'],
+      name: data['name'],
+      description: data['description'],
+      times: List<String>.from(data['times'] ?? []),
+      startDate: (data['startDate'] as Timestamp).toDate(),
+      endDate: data['endDate'] != null
+          ? (data['endDate'] as Timestamp).toDate()
+          : null,
+      takenDates: [],
+      immutable: data['immutable'] ?? true,
+    );
+  }
 }

@@ -1,112 +1,104 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/reminder_model.dart';
 
 class ReminderProvider with ChangeNotifier {
-  final FirebaseFirestore _db = FirebaseFirestore.instance;
-
+  final _db = FirebaseFirestore.instance;
   List<ReminderModel> reminders = [];
-  bool loading = false;
+  bool loading = true;
+  StreamSubscription? _sub;
 
-  /// 🔹 Carga los recordatorios del usuario actual
-  Future<void> start(String userId) async {
+  // Para pacientes: stream de sus propios reminders
+  void startForUser(String userId) {
     loading = true;
     notifyListeners();
-
-    final query = await _db
+    _sub = _db
         .collection('reminders')
         .where('userId', isEqualTo: userId)
-        .get();
+        .snapshots()
+        .listen((snap) {
+          reminders = snap.docs
+              .map((d) => ReminderModel.fromFirestore(d))
+              .toList();
+          loading = false;
+          notifyListeners();
+        });
+  }
 
-    reminders = query.docs
-        .map((doc) => ReminderModel.fromFirestore(doc))
-        .toList();
-
-    loading = false;
+  // Para doctor: stream de reminders creados por este doctor
+  void startForDoctor(String doctorId) {
+    loading = true;
     notifyListeners();
+    _sub = _db
+        .collection('reminders')
+        .where('doctorId', isEqualTo: doctorId)
+        .snapshots()
+        .listen((snap) {
+          reminders = snap.docs
+              .map((d) => ReminderModel.fromFirestore(d))
+              .toList();
+          loading = false;
+          notifyListeners();
+        });
   }
 
-  /// 🔹 Agrega un nuevo recordatorio
-  Future<void> addReminder({
-    required String name,
-    required String description,
-    required List<String> times,
-    required DateTime startDate,
-    required DateTime endDate,
-  }) async {
-    final userId = FirebaseFirestore.instance.app.options.projectId ?? 'demo';
+  void stop() {
+    _sub?.cancel();
+  }
 
-    final newDoc = await _db.collection('reminders').add({
-      'userId': userId,
-      'name': name,
-      'description': description,
-      'times': times,
-      'startDate': Timestamp.fromDate(startDate),
-      'endDate': Timestamp.fromDate(endDate),
-      'takenDates': [],
-      'immutable': false,
+  Future<void> addReminder(ReminderModel reminder) async {
+    await _db.collection('reminders').add({
+      ...reminder.toFirestore(),
+      'doctorId': reminder.doctorId,
+      'immutable': reminder.immutable,
     });
-
-    final newReminder = ReminderModel(
-      id: newDoc.id,
-      userId: userId,
-      name: name,
-      description: description,
-      times: times,
-      startDate: startDate,
-      endDate: endDate,
-      takenDates: [],
-    );
-
-    reminders.add(newReminder);
-    notifyListeners();
   }
 
-  /// 🔹 Actualiza un recordatorio existente
-  Future<void> updateReminder(String id, Map<String, dynamic> data) async {
-    await _db.collection('reminders').doc(id).update({
-      'name': data['name'],
-      'description': data['description'],
-      'times': data['times'],
-      'startDate': Timestamp.fromDate(data['startDate']),
-      'endDate': Timestamp.fromDate(data['endDate']),
-    });
-
-    final index = reminders.indexWhere((r) => r.id == id);
-    if (index != -1) {
-      reminders[index] = ReminderModel(
-        id: reminders[index].id,
-        userId: reminders[index].userId,
-        name: data['name'],
-        description: data['description'],
-        times: List<String>.from(data['times']),
-        startDate: data['startDate'],
-        endDate: data['endDate'],
-        takenDates: reminders[index].takenDates,
-      );
-      notifyListeners();
-    }
+  Future<void> updateReminder(ReminderModel reminder) async {
+    if (reminder.immutable) return;
+    await _db
+        .collection('reminders')
+        .doc(reminder.id)
+        .update(reminder.toFirestore());
   }
 
-  /// 🔹 Marca una toma como realizada
-  Future<void> markTaken(String id, DateTime date) async {
-    final docRef = _db.collection('reminders').doc(id);
-    await docRef.update({
-      'takenDates': FieldValue.arrayUnion([Timestamp.fromDate(date)]),
-    });
-
-    // 🟢 Actualiza localmente
-    final index = reminders.indexWhere((r) => r.id == id);
-    if (index != -1) {
-      reminders[index].takenDates.add(date);
-      notifyListeners();
-    }
-  }
-
-  /// 🔹 Elimina un recordatorio
-  Future<void> deleteReminder(String id) async {
+  Future<void> deleteReminder(String id, {bool immutable = false}) async {
+    if (immutable) return;
     await _db.collection('reminders').doc(id).delete();
-    reminders.removeWhere((r) => r.id == id);
-    notifyListeners();
   }
+
+  Future<void> markTaken(String reminderId) async {
+    final doc = await _db.collection('reminders').doc(reminderId).get();
+    final r = ReminderModel.fromFirestore(doc);
+    final updated = r.takenDates..add(DateTime.now());
+    await _db.collection('reminders').doc(reminderId).update({
+      'takenDates': updated.map((d) => Timestamp.fromDate(d)).toList(),
+    });
+  }
+
+  double computeProgress(ReminderModel reminder) {
+    final total =
+        reminder.times.length *
+        ((reminder.endDate ?? DateTime.now())
+                .difference(reminder.startDate)
+                .inDays +
+            1);
+    if (total == 0) return 1.0;
+    return (reminder.takenDates.length / total).clamp(0.0, 1.0);
+  }
+}
+
+extension on ReminderModel {
+  Map<String, dynamic> toFirestore() => {
+    'userId': userId,
+    'doctorId': doctorId,
+    'name': name,
+    'description': description,
+    'times': times,
+    'startDate': Timestamp.fromDate(startDate),
+    'endDate': endDate != null ? Timestamp.fromDate(endDate!) : null,
+    'takenDates': takenDates.map((d) => Timestamp.fromDate(d)).toList(),
+    'immutable': immutable,
+  };
 }

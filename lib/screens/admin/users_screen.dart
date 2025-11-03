@@ -16,7 +16,7 @@ class _UsersScreenState extends State<UsersScreen> {
   List<DocumentSnapshot> _users = [];
   bool _loading = false;
   bool _hasMore = true;
-  int _perPage = 50;
+  final int _perPage = 50;
   DocumentSnapshot? _lastDocument;
 
   @override

@@ -1,19 +1,28 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../models/reminder_model.dart';
 import '../../providers/reminder_provider.dart';
-import '../../core/services/notification_service.dart';
 
-class RemindersScreen extends StatefulWidget {
-  const RemindersScreen({super.key});
+class DoctorPatientRemindersScreen extends StatefulWidget {
+  final String doctorId;
+  final String patientId;
+  final String patientName;
+
+  const DoctorPatientRemindersScreen({
+    super.key,
+    required this.doctorId,
+    required this.patientId,
+    required this.patientName,
+  });
 
   @override
-  State<RemindersScreen> createState() => _RemindersScreenState();
+  State<DoctorPatientRemindersScreen> createState() =>
+      _DoctorPatientRemindersScreenState();
 }
 
-class _RemindersScreenState extends State<RemindersScreen> {
+class _DoctorPatientRemindersScreenState
+    extends State<DoctorPatientRemindersScreen> {
   bool _started = false;
 
   @override
@@ -21,11 +30,34 @@ class _RemindersScreenState extends State<RemindersScreen> {
     final prov = Provider.of<ReminderProvider>(context);
 
     if (!_started) {
-      final userId = FirebaseAuth.instance.currentUser!.uid;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        prov.startForUser(userId);
+        prov.startForUser(widget.patientId);
       });
       _started = true;
+    }
+
+    void openProgressModal(ReminderModel r) {
+      final progress = prov.computeProgress(r);
+      showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: Text('Progreso de "${r.name}"'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              LinearProgressIndicator(value: progress),
+              const SizedBox(height: 10),
+              Text('${(progress * 100).toStringAsFixed(0)}% completado'),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cerrar'),
+            ),
+          ],
+        ),
+      );
     }
 
     void openReminderDialog({ReminderModel? reminder}) {
@@ -145,58 +177,28 @@ class _RemindersScreenState extends State<RemindersScreen> {
                     if (reminder == null) {
                       await prov.addReminder(
                         ReminderModel(
-                          id: '', // Firestore asigna
-                          userId: FirebaseAuth.instance.currentUser!.uid,
-                          doctorId: null,
+                          id: '',
+                          userId: widget.patientId,
+                          doctorId: widget.doctorId,
                           name: nameCtrl.text,
                           description: descCtrl.text,
                           times: times,
                           startDate: startDate,
                           endDate: endDate,
                           takenDates: [],
-                          immutable: false,
+                          immutable: true,
                         ),
                       );
                     } else {
                       await prov.updateReminder(
-                        ReminderModel(
-                          id: reminder.id,
-                          userId: reminder.userId,
-                          doctorId: reminder.doctorId,
+                        reminder.copyWith(
                           name: nameCtrl.text,
                           description: descCtrl.text,
                           times: times,
                           startDate: startDate,
                           endDate: endDate,
-                          takenDates: reminder.takenDates,
-                          immutable: reminder.immutable,
                         ),
                       );
-                    }
-
-                    // Programar notificaciones
-                    for (var t in times) {
-                      final parts = t.split(':');
-                      if (parts.length == 2) {
-                        final hour = int.tryParse(parts[0]);
-                        final minute = int.tryParse(parts[1]);
-                        if (hour != null && minute != null) {
-                          final notifTime = DateTime(
-                            startDate.year,
-                            startDate.month,
-                            startDate.day,
-                            hour,
-                            minute,
-                          );
-                          await NotificationService.scheduleNotification(
-                            id: '${reminder?.id ?? ''}_$t'.hashCode,
-                            title: 'Recordatorio: ${nameCtrl.text}',
-                            body: 'Es hora de tomar tu medicamento',
-                            scheduledDate: notifTime,
-                            payload: '${reminder?.id ?? ''}_$t',
-                          );
-                        }
-                      }
                     }
 
                     Navigator.pop(ctx);
@@ -211,47 +213,15 @@ class _RemindersScreenState extends State<RemindersScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Mis Recordatorios')),
+      appBar: AppBar(title: Text('Recordatorios de ${widget.patientName}')),
       body: prov.loading
           ? const Center(child: CircularProgressIndicator())
           : prov.reminders.isEmpty
-          ? const Center(child: Text('No tienes recordatorios.'))
+          ? const Center(child: Text('No hay recordatorios.'))
           : ListView.builder(
               itemCount: prov.reminders.length,
               itemBuilder: (ctx, i) {
                 final r = prov.reminders[i];
-                final now = DateTime.now();
-
-                bool isWithinTakeWindow = r.times.any((t) {
-                  final parts = t.split(':');
-                  if (parts.length != 2) return false;
-                  final h = int.tryParse(parts[0]);
-                  final m = int.tryParse(parts[1]) ?? 0;
-                  if (h == null) return false;
-                  final reminderTime = DateTime(
-                    now.year,
-                    now.month,
-                    now.day,
-                    h,
-                    m,
-                  );
-                  return now.isAfter(
-                        reminderTime.subtract(const Duration(minutes: 30)),
-                      ) &&
-                      now.isBefore(
-                        reminderTime.add(const Duration(minutes: 30)),
-                      );
-                });
-
-                final hasTakenToday = r.takenDates.any(
-                  (d) =>
-                      d.year == now.year &&
-                      d.month == now.month &&
-                      d.day == now.day,
-                );
-
-                final progress = prov.computeProgress(r);
-
                 return Card(
                   margin: const EdgeInsets.symmetric(
                     horizontal: 12,
@@ -260,34 +230,27 @@ class _RemindersScreenState extends State<RemindersScreen> {
                   child: ListTile(
                     title: Text(r.name),
                     subtitle: Text(
-                      'Horas: ${r.times.join(', ')}\nInicio: ${DateFormat('dd/MM/yyyy').format(r.startDate)}\nFin: ${r.endDate != null ? DateFormat('dd/MM/yyyy').format(r.endDate!) : "-"}\nProgreso: ${(progress * 100).toStringAsFixed(0)}%',
+                      'Horas: ${r.times.join(', ')}\nInicio: ${DateFormat('dd/MM/yyyy').format(r.startDate)}\nFin: ${r.endDate != null ? DateFormat('dd/MM/yyyy').format(r.endDate!) : "-"}',
                     ),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        if (isWithinTakeWindow && !hasTakenToday)
-                          IconButton(
-                            icon: const Icon(Icons.check, color: Colors.green),
-                            onPressed: () async {
-                              await prov.markTaken(r.id);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Toma registrada ✅'),
-                                ),
-                              );
-                            },
+                        IconButton(
+                          icon: const Icon(
+                            Icons.show_chart,
+                            color: Colors.orange,
                           ),
-                        if (!r.immutable)
-                          IconButton(
-                            icon: const Icon(Icons.edit, color: Colors.blue),
-                            onPressed: () => openReminderDialog(reminder: r),
-                          ),
-                        if (!r.immutable)
-                          IconButton(
-                            icon: const Icon(Icons.delete, color: Colors.red),
-                            onPressed: () async =>
-                                await prov.deleteReminder(r.id),
-                          ),
+                          onPressed: () => openProgressModal(r),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.edit, color: Colors.blue),
+                          onPressed: () => openReminderDialog(reminder: r),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.delete, color: Colors.red),
+                          onPressed: () async =>
+                              await prov.deleteReminder(r.id),
+                        ),
                       ],
                     ),
                   ),

@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-class AdminSettingsScreen extends StatefulWidget {
-  const AdminSettingsScreen({super.key});
+class DoctorSettingsScreen extends StatefulWidget {
+  const DoctorSettingsScreen({super.key});
 
   @override
-  State<AdminSettingsScreen> createState() => _AdminSettingsScreenState();
+  State<DoctorSettingsScreen> createState() => _DoctorSettingsScreenState();
 }
 
-class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
+class _DoctorSettingsScreenState extends State<DoctorSettingsScreen> {
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController =
@@ -53,7 +53,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
 
   Future<void> _logout() async {
     await _auth.signOut();
-    if (!mounted) return; // si el widget se desmontó, no hacemos nada
+    if (!mounted) return;
     Navigator.of(context).pushReplacementNamed('/auth');
   }
 
@@ -61,7 +61,6 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
     final user = _auth.currentUser;
     if (user == null) return;
 
-    // Confirmación por diálogo
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -126,7 +125,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Ajustes del administrador')),
+      appBar: AppBar(title: const Text('Ajustes del doctor')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -163,7 +162,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
           const Divider(),
           const SizedBox(height: 16),
 
-          // Sección de acciones peligrosas
+          // Acciones peligrosas
           Text(
             'Acciones peligrosas',
             style: TextStyle(

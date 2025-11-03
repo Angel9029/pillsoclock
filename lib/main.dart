@@ -6,7 +6,6 @@ import 'package:provider/provider.dart';
 import 'providers/auth_provider.dart';
 import 'screens/auth/auth_screen.dart';
 import 'screens/patient/patient_home.dart';
-import 'screens/doctor/doctor_home.dart';
 import 'screens/admin/admin_home.dart';
 import 'providers/reminder_provider.dart';
 import 'providers/progress_provider.dart';
@@ -42,7 +41,7 @@ class MyApp extends StatelessWidget {
         routes: {
           '/auth': (context) => const AuthScreen(),
           '/patientHome': (context) => const PatientHome(),
-          '/doctorHome': (context) => const DoctorHome(),
+          // '/doctorHome': (context) => const DoctorHome(doctorId: user.uid),
           '/adminHome': (context) => const AdminHome(),
         },
       ),

@@ -16,8 +16,6 @@ class ProgressScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Progreso de Medicación'),
-        centerTitle: true,
-        backgroundColor: Colors.teal,
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
@@ -37,8 +35,7 @@ class ProgressScreen extends StatelessWidget {
           if (reminders.isEmpty) {
             return const Center(
               child: Text(
-                'Aún no tienes recordatorios registrados.',
-                style: TextStyle(fontSize: 16),
+                'Aún no tienes recordatorios con progreso registrados.',
               ),
             );
           }
@@ -60,15 +57,15 @@ class ProgressScreen extends StatelessWidget {
               final takenDatesLenght = data['takenDates'].length ?? 0;
 
               // 🔹 Conversiones seguras de Timestamp o String
-              DateTime? _toDate(dynamic v) {
+              DateTime? toDate(dynamic v) {
                 if (v == null) return null;
                 if (v is Timestamp) return v.toDate();
                 if (v is String) return DateTime.tryParse(v);
                 return null;
               }
 
-              final startDate = _toDate(data['startDate']);
-              final endDate = _toDate(data['endDate']);
+              final startDate = toDate(data['startDate']);
+              final endDate = toDate(data['endDate']);
 
               return FutureBuilder<double>(
                 future: progressProv.computeProgressFromFirestore(doc.id),

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../core/services/auth_service.dart';
-import '../../widgets/request_card.dart';
 
 class RequestsScreen extends StatelessWidget {
   const RequestsScreen({super.key});
@@ -17,9 +16,8 @@ class RequestsScreen extends StatelessWidget {
       appBar: AppBar(title: const Text('Solicitudes de Médicos')),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
-            .collection('requests')
-            .where('to_user', isEqualTo: uid)
-            .where('type', isEqualTo: 'doctor_link')
+            .collection('request_patient')
+            .where('patientId', isEqualTo: uid)
             .where('status', isEqualTo: 'pending')
             .snapshots(),
         builder: (context, snapshot) {
@@ -40,9 +38,77 @@ class RequestsScreen extends StatelessWidget {
           return ListView.builder(
             itemCount: requests.length,
             itemBuilder: (context, index) {
-              final req = requests[index].data() as Map<String, dynamic>;
-              final id = requests[index].id;
-              return RequestCard(requestId: id, requestData: req);
+              final req = requests[index];
+              final data = req.data() as Map<String, dynamic>;
+              final id = req.id;
+              final doctorId = data['doctorId'] ?? '';
+
+              return FutureBuilder<DocumentSnapshot>(
+                future: FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(doctorId)
+                    .get(),
+                builder: (context, doctorSnap) {
+                  if (!doctorSnap.hasData) {
+                    return const ListTile(title: Text('Cargando...'));
+                  }
+
+                  final doctorData =
+                      doctorSnap.data!.data() as Map<String, dynamic>? ?? {};
+                  final name = doctorData['name'] ?? 'Médico';
+                  final email = doctorData['email'] ?? '';
+
+                  return Card(
+                    margin: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    child: ListTile(
+                      title: Text(name),
+                      subtitle: Text(email),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.check, color: Colors.green),
+                            onPressed: () async {
+                              await FirebaseFirestore.instance
+                                  .collection('request_patient')
+                                  .doc(id)
+                                  .update({'status': 'accepted'});
+
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Solicitud aceptada ✅'),
+                                  ),
+                                );
+                              }
+                            },
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close, color: Colors.red),
+                            onPressed: () async {
+                              await FirebaseFirestore.instance
+                                  .collection('request_patient')
+                                  .doc(id)
+                                  .update({'status': 'rejected'});
+
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Solicitud rechazada ❌'),
+                                  ),
+                                );
+                              }
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              );
             },
           );
         },

@@ -21,10 +21,12 @@ class AuthScreen extends StatelessWidget {
     }
 
     final role = snap['role'];
+    final uid = user.uid;
+
     if (role == 'admin') {
       return const AdminHome();
     } else if (role == 'doctor') {
-      return const DoctorHome();
+      return DoctorHome(doctorId: uid);
     } else {
       return const PatientHome();
     }
