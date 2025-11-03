@@ -1,26 +1,39 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../../providers/auth_provider.dart';
+import 'reminders_screen.dart';
+import 'progress_screen.dart';
+import 'requests_screen.dart';
+import 'settings_screen.dart';
 
-class PatientHome extends StatelessWidget {
+class PatientHome extends StatefulWidget {
   const PatientHome({super.key});
+
+  @override
+  State<PatientHome> createState() => _PatientHomeState();
+}
+
+class _PatientHomeState extends State<PatientHome> {
+  int _currentIndex = 0;
+
+  final List<Widget> _screens = const [
+    RemindersScreen(),
+    ProgressScreen(),
+    RequestsScreen(),
+    SettingsScreen(),
+  ];
+
   @override
   Widget build(BuildContext context) {
-    final auth = context.read<AuthProviderLocal>();
     return Scaffold(
-      appBar: AppBar(title: const Text('Paciente')),
-      body: Center(
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          const Icon(Icons.health_and_safety_rounded, size: 72, color: Colors.teal),
-          const SizedBox(height: 12),
-          const Text("Bienvenido, paciente", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 12),
-          ElevatedButton.icon(
-            onPressed: () => auth.logout(),
-            icon: const Icon(Icons.logout),
-            label: const Text('Cerrar sesión'),
-          )
-        ]),
+      body: _screens[_currentIndex],
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentIndex,
+        onTap: (index) => setState(() => _currentIndex = index),
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.alarm), label: 'Recordatorios', backgroundColor: Colors.blue),
+          BottomNavigationBarItem(icon: Icon(Icons.show_chart), label: 'Progreso'),
+          BottomNavigationBarItem(icon: Icon(Icons.people), label: 'Solicitudes'),
+          BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Ajustes'),
+        ],
       ),
     );
   }

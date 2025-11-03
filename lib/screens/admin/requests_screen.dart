@@ -5,11 +5,23 @@ class RequestsScreen extends StatelessWidget {
   const RequestsScreen({super.key});
 
   Future<void> _updateRequestStatus(
-      String requestId, String userId, String status) async {
+    String requestId,
+    String userId,
+    String status,
+  ) async {
     final db = FirebaseFirestore.instance;
 
-    await db.collection('requests').doc(requestId).update({'status': status});
+    final requestRef = db.collection('requests').doc(requestId);
 
+    final snapshot = await requestRef.get();
+    if (!snapshot.exists) {
+      debugPrint('⚠️ La solicitud no existe');
+      return;
+    }
+
+    await requestRef.update({'status': status});
+
+    // Si es aceptada → actualizar rol del usuario
     if (status == 'accepted') {
       await db.collection('users').doc(userId).update({'role': 'doctor'});
     }
@@ -48,15 +60,20 @@ class RequestsScreen extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       IconButton(
-                        icon:
-                            const Icon(Icons.close, color: Colors.redAccent),
-                        onPressed: () =>
-                            _updateRequestStatus(req.id, data['userId'], 'rejected'),
+                        icon: const Icon(Icons.close, color: Colors.redAccent),
+                        onPressed: () => _updateRequestStatus(
+                          req.id,
+                          data['userId'],
+                          'rejected',
+                        ),
                       ),
                       IconButton(
                         icon: const Icon(Icons.check, color: Colors.green),
-                        onPressed: () =>
-                            _updateRequestStatus(req.id, data['userId'], 'accepted'),
+                        onPressed: () => _updateRequestStatus(
+                          req.id,
+                          data['userId'],
+                          'accepted',
+                        ),
                       ),
                     ],
                   ),
