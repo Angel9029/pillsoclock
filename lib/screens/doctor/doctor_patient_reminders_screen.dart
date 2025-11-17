@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/reminder_model.dart';
 import '../../providers/reminder_provider.dart';
 import '../../core/services/notification_service.dart';
+import '../../widgets/progress_card.dart';
 
 class DoctorPatientRemindersScreen extends StatefulWidget {
   final String doctorId;
@@ -37,26 +39,67 @@ class _DoctorPatientRemindersScreenState
       _started = true;
     }
 
+    // 🔹 Filtrar: solo recordatorios creados por ESTE doctor
+    final myReminders = prov.reminders
+        .where((r) => r.doctorId == widget.doctorId)
+        .toList();
+
     void openProgressModal(ReminderModel r) {
       final progress = prov.computeProgress(r);
       showDialog(
         context: context,
-        builder: (_) => AlertDialog(
-          title: Text('Progreso de "${r.name}"'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              LinearProgressIndicator(value: progress),
-              const SizedBox(height: 10),
-              Text('${(progress * 100).toStringAsFixed(0)}% completado'),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cerrar'),
+        builder: (_) => Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Progreso: ${r.name}',
+                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 20),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: LinearProgressIndicator(
+                    value: progress,
+                    minHeight: 12,
+                    backgroundColor: Colors.teal.withOpacity(0.15),
+                    color: Colors.teal,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  '${(progress * 100).toStringAsFixed(0)}% completado',
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.teal),
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Tomas registradas: ${r.takenDates.length}', style: const TextStyle(fontSize: 14)),
+                      Text('Horas: ${r.times.join(", ")}', style: const TextStyle(fontSize: 14)),
+                      Text('Inicio: ${DateFormat('dd/MM/yyyy').format(r.startDate)}', style: const TextStyle(fontSize: 14)),
+                      if (r.endDate != null)
+                        Text('Fin: ${DateFormat('dd/MM/yyyy').format(r.endDate!)}', style: const TextStyle(fontSize: 14)),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cerrar'),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       );
     }
@@ -65,20 +108,38 @@ class _DoctorPatientRemindersScreenState
       final nameCtrl = TextEditingController(text: reminder?.name ?? '');
       final descCtrl = TextEditingController(text: reminder?.description ?? '');
       final timesCtrl = TextEditingController(
-        text: reminder?.times.join(',') ?? '',
+        text: reminder?.times.join(', ') ?? '',
       );
       DateTime startDate =
           reminder?.startDate ?? DateTime.now().add(const Duration(minutes: 1));
       DateTime endDate =
           reminder?.endDate ?? DateTime.now().add(const Duration(days: 30));
+      String? _timeError;
 
       showDialog(
         context: context,
         builder: (ctx) => StatefulBuilder(
           builder: (ctx, setState) {
+            bool _validateTimes(String input) {
+              if (input.isEmpty) return false;
+              final times = input.split(',').map((e) => e.trim()).toList();
+              for (var t in times) {
+                final parts = t.split(':');
+                if (parts.length != 2) return false;
+                final h = int.tryParse(parts[0]);
+                final m = int.tryParse(parts[1]);
+                if (h == null || m == null || h < 0 || h > 23 || m < 0 || m > 59) {
+                  return false;
+                }
+              }
+              return true;
+            }
+
             return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               title: Text(
                 reminder == null ? 'Nuevo Recordatorio' : 'Editar Recordatorio',
+                style: const TextStyle(fontWeight: FontWeight.bold),
               ),
               content: SingleChildScrollView(
                 child: Column(
@@ -86,25 +147,41 @@ class _DoctorPatientRemindersScreenState
                   children: [
                     TextField(
                       controller: nameCtrl,
-                      decoration: const InputDecoration(labelText: 'Nombre'),
+                      decoration: InputDecoration(
+                        labelText: 'Nombre del medicamento',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
                     ),
+                    const SizedBox(height: 12),
                     TextField(
                       controller: descCtrl,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Descripción',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                       ),
                     ),
+                    const SizedBox(height: 12),
                     TextField(
                       controller: timesCtrl,
-                      decoration: const InputDecoration(
-                        labelText: 'Horas (ej: 08:00,20:00)',
+                      decoration: InputDecoration(
+                        labelText: 'Horas (ej: 08:00, 20:00)',
+                        errorText: _timeError,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                       ),
+                      onChanged: (val) {
+                        setState(() {
+                          _timeError = _validateTimes(val) ? null : 'Formato inválido. Usa HH:MM separadas por comas';
+                        });
+                      },
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 16),
                     Row(
                       children: [
-                        Text(
-                          'Inicio: ${DateFormat('yyyy-MM-dd HH:mm').format(startDate)}',
+                        Expanded(
+                          child: Text(
+                            'Inicio: ${DateFormat('yyyy-MM-dd HH:mm').format(startDate)}',
+                            style: const TextStyle(fontSize: 14),
+                          ),
                         ),
                         IconButton(
                           icon: const Icon(Icons.calendar_today),
@@ -140,8 +217,11 @@ class _DoctorPatientRemindersScreenState
                     ),
                     Row(
                       children: [
-                        Text(
-                          'Fin: ${DateFormat('yyyy-MM-dd').format(endDate)}',
+                        Expanded(
+                          child: Text(
+                            'Fin: ${DateFormat('yyyy-MM-dd').format(endDate)}',
+                            style: const TextStyle(fontSize: 14),
+                          ),
                         ),
                         IconButton(
                           icon: const Icon(Icons.calendar_today_outlined),
@@ -169,6 +249,18 @@ class _DoctorPatientRemindersScreenState
                 ),
                 ElevatedButton(
                   onPressed: () async {
+                    if (_timeError != null) {
+                      ScaffoldMessenger.of(ctx).showSnackBar(
+                        const SnackBar(content: Text('❌ Revisa el formato de horas')),
+                      );
+                      return;
+                    }
+                    if (nameCtrl.text.trim().isEmpty) {
+                      ScaffoldMessenger.of(ctx).showSnackBar(
+                        const SnackBar(content: Text('❌ Ingresa un nombre')),
+                      );
+                      return;
+                    }
                     final times = timesCtrl.text
                         .split(',')
                         .map((e) => e.trim())
@@ -190,7 +282,7 @@ class _DoctorPatientRemindersScreenState
                           immutable: true,
                         ),
                       );
-                      // opcional: reprogramar notifs localmente para el doctor
+                      // ✅ Programar notificaciones para el PACIENTE
                       await NotificationService.cancelNotificationsByPrefix(newId);
                       for (int i = 0; i < times.length; i++) {
                         final parts = times[i].split(':');
@@ -199,8 +291,8 @@ class _DoctorPatientRemindersScreenState
                         final minute = int.tryParse(parts[1]) ?? 0;
                         await NotificationService.scheduleDailyNotification(
                           id: '${newId}_$i'.hashCode,
-                          title: 'Recordatorio (paciente): ${nameCtrl.text}',
-                          body: descCtrl.text.isNotEmpty ? descCtrl.text : 'Recordatorio creado por doctor',
+                          title: 'Recordatorio: ${nameCtrl.text}',
+                          body: descCtrl.text.isNotEmpty ? descCtrl.text : 'Es hora de tu medicamento',
                           hour: hour,
                           minute: minute,
                           payload: newId,
@@ -216,7 +308,7 @@ class _DoctorPatientRemindersScreenState
                           endDate: endDate,
                         ),
                       );
-                      // reprogramar localmente para consistencia del doctor
+                      // ✅ Reprogramar notificaciones para el PACIENTE
                       await NotificationService.cancelNotificationsByPrefix(reminder.id);
                       for (int i = 0; i < times.length; i++) {
                         final parts = times[i].split(':');
@@ -225,8 +317,8 @@ class _DoctorPatientRemindersScreenState
                         final minute = int.tryParse(parts[1]) ?? 0;
                         await NotificationService.scheduleDailyNotification(
                           id: '${reminder.id}_$i'.hashCode,
-                          title: 'Recordatorio (paciente): ${nameCtrl.text}',
-                          body: descCtrl.text.isNotEmpty ? descCtrl.text : 'Recordatorio creado por doctor',
+                          title: 'Recordatorio: ${nameCtrl.text}',
+                          body: descCtrl.text.isNotEmpty ? descCtrl.text : 'Es hora de tu medicamento',
                           hour: hour,
                           minute: minute,
                           payload: reminder.id,
@@ -246,53 +338,54 @@ class _DoctorPatientRemindersScreenState
     }
 
     return Scaffold(
-      appBar: AppBar(title: Text('Recordatorios de ${widget.patientName}')),
+      appBar: AppBar(
+        title: Text('Medicamentos: ${widget.patientName}'),
+        elevation: 0,
+        centerTitle: true,
+      ),
       body: prov.loading
           ? const Center(child: CircularProgressIndicator())
-          : prov.reminders.isEmpty
-          ? const Center(child: Text('No hay recordatorios.'))
-          : ListView.builder(
-              itemCount: prov.reminders.length,
-              itemBuilder: (ctx, i) {
-                final r = prov.reminders[i];
-                return Card(
-                  margin: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
+          : myReminders.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.medication, size: 64, color: Colors.grey.shade300),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'No hay recordatorios creados por ti',
+                        style: TextStyle(fontSize: 16, color: Colors.grey),
+                      ),
+                    ],
                   ),
-                  child: ListTile(
-                    title: Text(r.name),
-                    subtitle: Text(
-                      'Horas: ${r.times.join(', ')}\nInicio: ${DateFormat('dd/MM/yyyy').format(r.startDate)}\nFin: ${r.endDate != null ? DateFormat('dd/MM/yyyy').format(r.endDate!) : "-"}',
-                    ),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: const Icon(
-                            Icons.show_chart,
-                            color: Colors.orange,
-                          ),
-                          onPressed: () => openProgressModal(r),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.edit, color: Colors.blue),
-                          onPressed: () => openReminderDialog(reminder: r),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.delete, color: Colors.red),
-                          onPressed: () async =>
-                              await prov.deleteReminder(r.id),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-      floatingActionButton: FloatingActionButton(
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.all(12),
+                  itemCount: myReminders.length,
+                  itemBuilder: (ctx, i) {
+                    final r = myReminders[i];
+                    final progress = prov.computeProgress(r);
+
+                    return ProgressCard(
+                      reminderId: r.id,
+                      name: r.name,
+                      description: r.description,
+                      times: r.times,
+                      startDate: r.startDate,
+                      endDate: r.endDate,
+                      progress: progress,
+                      takenDatesLenght: r.takenDates.length,
+                    ).withActions(
+                      onEdit: () => openReminderDialog(reminder: r),
+                      onDelete: () async => await prov.deleteReminder(r.id),
+                      onProgress: () => openProgressModal(r),
+                    );
+                  },
+                ),
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: () => openReminderDialog(),
-        child: const Icon(Icons.add),
+        icon: const Icon(Icons.add_rounded),
+        label: const Text('Nuevo'),
       ),
     );
   }

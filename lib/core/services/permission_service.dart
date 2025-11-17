@@ -6,49 +6,39 @@ import 'package:android_intent_plus/flag.dart';
 
 class PermissionService {
   static Future<void> ensureEssentialPermissions(BuildContext context) async {
-    final permissions = <Permission>[
-      Permission.notification,
-      if (Platform.isAndroid) Permission.ignoreBatteryOptimizations,
-    ];
-
-    final results = await permissions.request();
-
-    final denied = results.entries
-        .where((e) => e.value.isDenied || e.value.isPermanentlyDenied)
-        .toList();
-
-    if (denied.isNotEmpty) {
-      await _showPermissionDialog(context);
-      return;
+    // Solo solicitar permiso de notificaciones de runtime.
+    final status = await Permission.notification.status;
+    if (!status.isGranted) {
+      final res = await Permission.notification.request();
+      if (res.isPermanentlyDenied) {
+        // Mostrar diálogo informativo (no forzar cierre)
+        await _showPermissionDialog(context);
+      }
     }
 
+    // Para Android: sugerir (no forzar) revisar ajustes de alarmas exactas si es necesario.
     if (Platform.isAndroid) {
-      await _checkExactAlarmPermission(context);
+      await _checkExactAlarmPermissionIfNeeded();
     }
   }
 
   /// 🔹 En Android 12+ el permiso de exact alarms debe activarse manualmente
-  static Future<void> _checkExactAlarmPermission(BuildContext context) async {
-    try {
-      const intent = AndroidIntent(
-        action: 'android.settings.REQUEST_SCHEDULE_EXACT_ALARM',
-        flags: <int>[Flag.FLAG_ACTIVITY_NEW_TASK],
-      );
-      await intent.launch();
-    } catch (e) {
-      debugPrint('No se pudo abrir ajustes de alarmas exactas: $e');
-    }
+  static Future<void> _checkExactAlarmPermissionIfNeeded() async {
+    // No abrimos ajustes automáticamente. Solo intentamos abrir si la plataforma lo admite.
+    // Esto evita molestar al usuario en cada splash.
+    return;
   }
 
   static Future<void> _showPermissionDialog(BuildContext context) async {
+    // Diálogo informativo; puede cerrarse para seguir usando la app.
     await showDialog(
       context: context,
-      barrierDismissible: false,
+      barrierDismissible: true,
       builder: (_) => AlertDialog(
-        title: const Text('Permisos requeridos'),
+        title: const Text('Permisos recomendados'),
         content: const Text(
-          'Esta app necesita permisos de notificación y alarmas para funcionar correctamente.\n\n'
-          'Por favor, actívalos en Ajustes o no podrá continuar.',
+          'Para recibir recordatorios como notificaciones, activa los permisos de notificaciones en Ajustes.\n\n'
+          'Si prefieres, puedes continuar sin ellos.',
         ),
         actions: [
           TextButton(
@@ -57,7 +47,7 @@ class PermissionService {
             },
             child: const Text('Abrir ajustes'),
           ),
-          TextButton(onPressed: () => exit(0), child: const Text('Cerrar app')),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cerrar')),
         ],
       ),
     );

@@ -22,7 +22,16 @@ class ProgressScreen extends StatelessWidget {
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
-            return const Center(child: Text('Error al cargar el progreso'));
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.error_outline_rounded, size: 64, color: Colors.red.shade300),
+                  const SizedBox(height: 12),
+                  const Text('Error al cargar'),
+                ],
+              ),
+            );
           }
 
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -31,9 +40,14 @@ class ProgressScreen extends StatelessWidget {
 
           final reminders = snapshot.data?.docs ?? [];
           if (reminders.isEmpty) {
-            return const Center(
-              child: Text(
-                'Aún no tienes recordatorios con progreso registrados.',
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.trending_up_rounded, size: 64, color: Colors.grey.shade300),
+                  const SizedBox(height: 12),
+                  const Text('Sin registros aún'),
+                ],
               ),
             );
           }

@@ -14,59 +14,46 @@ class DoctorHome extends StatefulWidget {
 class _DoctorHomeState extends State<DoctorHome> {
   int _currentIndex = 0;
 
+  final List<Widget> _screens = [];
+  
   @override
-  Widget build(BuildContext context) {
-    final screens = [
+  void initState() {
+    super.initState();
+    _screens.addAll([
       DoctorPatientsScreen(doctorId: widget.doctorId),
       DoctorRemindersScreen(doctorId: widget.doctorId),
       const DoctorSettingsScreen(),
-    ];
+    ]);
+  }
 
+  final List<String> _titles = [
+    'Pacientes Disponibles',
+    'Mis Pacientes',
+    'Configuración',
+  ];
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(_currentIndex == 0 ? 'Pacientes' : _currentIndex == 1 ? 'Recordatorios' : 'Ajustes'),
+        title: Text(
+          _titles[_currentIndex],
+          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 22),
+        ),
+        elevation: 0,
         centerTitle: true,
-        actions: [
-          if (_currentIndex == 0)
-            IconButton(
-              icon: const Icon(Icons.search),
-              onPressed: () {
-                // Abre búsqueda dentro de DoctorPatientsScreen (implementar allí)
-                // TODO: enviar evento o usar un controlador para enfocar search
-              },
-            ),
-        ],
       ),
-      body: screens[_currentIndex],
-      floatingActionButton: _currentIndex == 1
-          ? FloatingActionButton.extended(
-              onPressed: () async {
-                // Abrir pantalla de recordatorios en modo diálogo para crear nuevo
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => DoctorRemindersScreen(doctorId: widget.doctorId),
-                    fullscreenDialog: true,
-                  ),
-                );
-              },
-              icon: const Icon(Icons.add),
-              label: const Text('Nuevo'),
-            )
-          : null,
+      body: _screens[_currentIndex],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (i) => setState(() => _currentIndex = i),
+        type: BottomNavigationBarType.fixed,
+        selectedItemColor: Colors.teal,
+        unselectedItemColor: Colors.grey,
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.people), label: 'Pacientes'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.medical_information),
-            label: 'Recordatorios',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
-            label: 'Configuración',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.people_outline_rounded), label: 'Pacientes'),
+          BottomNavigationBarItem(icon: Icon(Icons.medical_information_rounded), label: 'Medicamentos'),
+          BottomNavigationBarItem(icon: Icon(Icons.settings_rounded), label: 'Ajustes'),
         ],
       ),
     );

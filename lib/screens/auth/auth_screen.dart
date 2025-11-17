@@ -52,14 +52,10 @@ class AuthScreen extends StatelessWidget {
           future: _resolveHome(user),
           builder: (context, snap) {
             if (snap.connectionState == ConnectionState.waiting) {
-              return const Scaffold(
-                body: Center(child: CircularProgressIndicator()),
-              );
+              return const Scaffold(body: Center(child: CircularProgressIndicator()));
             }
             if (snap.hasError) {
-              return const Scaffold(
-                body: Center(child: Text('Error al cargar datos del usuario')),
-              );
+              return const Scaffold(body: Center(child: Text('Error al cargar datos del usuario')));
             }
             return snap.data!;
           },

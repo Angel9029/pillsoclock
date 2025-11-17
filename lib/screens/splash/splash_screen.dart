@@ -17,10 +17,15 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _init() async {
-    await PermissionService.ensureEssentialPermissions(context);
+    // Intentar asegurar permisos (no bloquear): si el usuario los concede, genial; si no, seguimos.
+    try {
+      await PermissionService.ensureEssentialPermissions(context);
+    } catch (_) {
+      // ignorar errores de permisos para no bloquear splash
+    }
 
-    // Espera 1s para estabilidad
-    await Future.delayed(const Duration(seconds: 1));
+    // Espera corta para que el splash no desaparezca instantáneamente
+    await Future.delayed(const Duration(milliseconds: 800));
 
     if (mounted) {
       Navigator.pushReplacement(

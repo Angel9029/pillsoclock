@@ -19,26 +19,38 @@ class _AdminHomeState extends State<AdminHome> {
     AdminSettingsScreen(),
   ];
 
+  final List<String> _titles = [
+    'Gestión de Usuarios',
+    'Solicitudes Pendientes',
+    'Configuración',
+  ];
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          _titles[_currentIndex],
+          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 22),
+        ),
+        elevation: 0,
+        centerTitle: true,
+      ),
       body: _screens[_currentIndex],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (index) => setState(() => _currentIndex = index),
+        type: BottomNavigationBarType.fixed,
+        selectedItemColor: Colors.teal,
+        unselectedItemColor: Colors.grey,
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(Icons.people),
-            label: 'Usuarios',
-          ),
+              icon: Icon(Icons.supervised_user_circle_rounded),
+              label: 'Usuarios'),
           BottomNavigationBarItem(
-            icon: Icon(Icons.mail_outline),
-            label: 'Solicitudes',
-          ),
+              icon: Icon(Icons.mail_outline_rounded), label: 'Solicitudes'),
           BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
-            label: 'Ajustes',
-          ),
+              icon: Icon(Icons.settings_rounded), label: 'Ajustes'),
         ],
       ),
     );

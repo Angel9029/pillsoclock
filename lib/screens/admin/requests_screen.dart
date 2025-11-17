@@ -38,29 +38,63 @@ class RequestsScreen extends StatelessWidget {
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
-            return const Center(child: Text('Error al cargar solicitudes'));
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.error_outline_rounded, size: 64, color: Colors.red.shade300),
+                  const SizedBox(height: 12),
+                  const Text('Error al cargar'),
+                ],
+              ),
+            );
           }
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return const Center(child: Text('No hay solicitudes pendientes.'));
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          
+          if (snapshot.data!.docs.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.mail_outline_rounded, size: 64, color: Colors.grey.shade300),
+                  const SizedBox(height: 12),
+                  const Text('Sin solicitudes'),
+                ],
+              ),
+            );
           }
 
           final requests = snapshot.data!.docs;
 
           return ListView.builder(
+            padding: const EdgeInsets.all(12),
             itemCount: requests.length,
             itemBuilder: (context, index) {
               final req = requests[index];
               final data = req.data() as Map<String, dynamic>;
               return Card(
-                margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                elevation: 2,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                margin: const EdgeInsets.symmetric(vertical: 6),
                 child: ListTile(
+                  leading: Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withOpacity(0.2),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.person_add_rounded, color: Colors.orange, size: 24),
+                  ),
                   title: Text(data['userName'] ?? 'Usuario desconocido'),
                   subtitle: Text(data['userEmail'] ?? ''),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       IconButton(
-                        icon: const Icon(Icons.close, color: Colors.redAccent),
+                        icon: const Icon(Icons.close_rounded, color: Colors.red),
                         onPressed: () => _updateRequestStatus(
                           req.id,
                           data['userId'],
@@ -68,7 +102,7 @@ class RequestsScreen extends StatelessWidget {
                         ),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.check, color: Colors.green),
+                        icon: const Icon(Icons.check_rounded, color: Colors.green),
                         onPressed: () => _updateRequestStatus(
                           req.id,
                           data['userId'],

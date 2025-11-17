@@ -46,7 +46,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
-    // registered — provider will update; pop register to let AuthWrapper handle routing
     if (mounted) {
       setState(() => _loading = false);
       Navigator.pop(context);
@@ -57,29 +56,36 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Crear cuenta')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 520),
-          child: Column(
-            children: [
-              TextField(controller: _name, decoration: const InputDecoration(labelText: 'Nombre completo')),
-              const SizedBox(height: 12),
-              TextField(controller: _email, decoration: const InputDecoration(labelText: 'Correo')),
-              const SizedBox(height: 12),
-              TextField(controller: _password, decoration: const InputDecoration(labelText: 'Contraseña'), obscureText: true),
-              const SizedBox(height: 12),
-              const SizedBox(height: 18),
-              if (_error != null) Text(_error!, style: const TextStyle(color: Colors.red)),
-              const SizedBox(height: 8),
-              _loading
-                  ? const CircularProgressIndicator()
-                  : ElevatedButton.icon(
-                      onPressed: _submit,
-                      icon: const Icon(Icons.person_add),
-                      label: const Text('Crear cuenta'),
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 520),
+            child: Card(
+              elevation: 6,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  children: [
+                    TextField(controller: _name, decoration: const InputDecoration(labelText: 'Nombre completo', prefixIcon: Icon(Icons.person))),
+                    const SizedBox(height: 12),
+                    TextField(controller: _email, decoration: const InputDecoration(labelText: 'Correo', prefixIcon: Icon(Icons.email))),
+                    const SizedBox(height: 12),
+                    TextField(controller: _password, decoration: const InputDecoration(labelText: 'Contraseña', prefixIcon: Icon(Icons.lock)), obscureText: true),
+                    const SizedBox(height: 18),
+                    if (_error != null) Text(_error!, style: const TextStyle(color: Colors.red)),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: _loading
+                          ? const Center(child: CircularProgressIndicator())
+                          : ElevatedButton.icon(onPressed: _submit, icon: const Icon(Icons.person_add), label: const Text('Crear cuenta')),
                     ),
-            ],
+                  ],
+                ),
+              ),
+            ),
           ),
         ),
       ),

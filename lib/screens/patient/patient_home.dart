@@ -21,18 +21,36 @@ class _PatientHomeState extends State<PatientHome> {
     SettingsScreen(),
   ];
 
+  final List<String> _titles = [
+    'Mis Recordatorios',
+    'Progreso',
+    'Solicitudes Médicas',
+    'Configuración',
+  ];
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          _titles[_currentIndex],
+          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 22),
+        ),
+        elevation: 0,
+        centerTitle: true,
+      ),
       body: _screens[_currentIndex],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (index) => setState(() => _currentIndex = index),
+        type: BottomNavigationBarType.fixed,
+        selectedItemColor: Colors.teal,
+        unselectedItemColor: Colors.grey,
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.alarm), label: 'Recordatorios', backgroundColor: Colors.blue),
-          BottomNavigationBarItem(icon: Icon(Icons.show_chart), label: 'Progreso', backgroundColor: Colors.blue),
-          BottomNavigationBarItem(icon: Icon(Icons.people), label: 'Solicitudes', backgroundColor: Colors.blue),
-          BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Ajustes', backgroundColor: Colors.blue),
+          BottomNavigationBarItem(icon: Icon(Icons.alarm_on_rounded), label: 'Recordatorios'),
+          BottomNavigationBarItem(icon: Icon(Icons.show_chart_rounded), label: 'Progreso'),
+          BottomNavigationBarItem(icon: Icon(Icons.mail_outline_rounded), label: 'Solicitudes'),
+          BottomNavigationBarItem(icon: Icon(Icons.settings_rounded), label: 'Ajustes'),
         ],
       ),
     );
