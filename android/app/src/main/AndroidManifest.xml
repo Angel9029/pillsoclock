@@ -18,6 +18,9 @@
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
+    <!-- Permiso para servicios en primer plano si gestionas notificaciones persistentes -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+
     <application
         android:label="pillsoclock"
         android:name="${applicationName}"
@@ -46,8 +49,17 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <!-- Don't delete the meta-data below.
-             This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
+
+        <!-- Receptores recomendados por flutter_local_notifications para reprogramar notificaciones tras reinicio -->
+        <receiver android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver" android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+        <receiver android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" android:exported="false"/>
+
+        <!-- No borres este meta-data: usado por Flutter tool -->
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />

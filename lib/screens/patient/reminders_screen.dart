@@ -143,9 +143,10 @@ class _RemindersScreenState extends State<RemindersScreen> {
                         .toList();
 
                     if (reminder == null) {
-                      await prov.addReminder(
+                      // Crear y obtener id
+                      final newId = await prov.addReminder(
                         ReminderModel(
-                          id: '', // Firestore asigna
+                          id: '',
                           userId: FirebaseAuth.instance.currentUser!.uid,
                           doctorId: null,
                           name: nameCtrl.text,
@@ -157,45 +158,45 @@ class _RemindersScreenState extends State<RemindersScreen> {
                           immutable: false,
                         ),
                       );
+                      // Programar notificaciones locales usando newId
+                      for (int i = 0; i < times.length; i++) {
+                        final parts = times[i].split(':');
+                        if (parts.length != 2) continue;
+                        final hour = int.tryParse(parts[0]) ?? 0;
+                        final minute = int.tryParse(parts[1]) ?? 0;
+                        await NotificationService.scheduleDailyNotification(
+                          id: '${newId}_$i'.hashCode,
+                          title: 'Recordatorio: ${nameCtrl.text}',
+                          body: descCtrl.text.isNotEmpty ? descCtrl.text : 'Es hora de tu dosis',
+                          hour: hour,
+                          minute: minute,
+                          payload: newId,
+                        );
+                      }
                     } else {
-                      await prov.updateReminder(
-                        ReminderModel(
-                          id: reminder.id,
-                          userId: reminder.userId,
-                          doctorId: reminder.doctorId,
-                          name: nameCtrl.text,
-                          description: descCtrl.text,
-                          times: times,
-                          startDate: startDate,
-                          endDate: endDate,
-                          takenDates: reminder.takenDates,
-                          immutable: reminder.immutable,
-                        ),
+                      final updated = reminder.copyWith(
+                        name: nameCtrl.text,
+                        description: descCtrl.text,
+                        times: times,
+                        startDate: startDate,
+                        endDate: endDate,
                       );
-                    }
-
-                    // Programar notificaciones
-                    for (var t in times) {
-                      final parts = t.split(':');
-                      if (parts.length == 2) {
-                        final hour = int.tryParse(parts[0]);
-                        final minute = int.tryParse(parts[1]);
-                        if (hour != null && minute != null) {
-                          final notifTime = DateTime(
-                            startDate.year,
-                            startDate.month,
-                            startDate.day,
-                            hour,
-                            minute,
-                          );
-                          await NotificationService.scheduleNotification(
-                            id: '${reminder?.id ?? ''}_$t'.hashCode,
-                            title: 'Recordatorio: ${nameCtrl.text}',
-                            body: 'Es hora de tomar tu medicamento',
-                            scheduledDate: notifTime,
-                            payload: '${reminder?.id ?? ''}_$t',
-                          );
-                        }
+                      await prov.updateReminder(updated);
+                      // Reprogramar notificaciones: cancelar y programar
+                      await NotificationService.cancelNotificationsByPrefix(reminder.id);
+                      for (int i = 0; i < times.length; i++) {
+                        final parts = times[i].split(':');
+                        if (parts.length != 2) continue;
+                        final hour = int.tryParse(parts[0]) ?? 0;
+                        final minute = int.tryParse(parts[1]) ?? 0;
+                        await NotificationService.scheduleDailyNotification(
+                          id: '${reminder.id}_$i'.hashCode,
+                          title: 'Recordatorio: ${nameCtrl.text}',
+                          body: descCtrl.text.isNotEmpty ? descCtrl.text : 'Es hora de tu dosis',
+                          hour: hour,
+                          minute: minute,
+                          payload: reminder.id,
+                        );
                       }
                     }
 

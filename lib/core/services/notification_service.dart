@@ -9,13 +9,13 @@ class NotificationService {
 
   final _plugin = FlutterLocalNotificationsPlugin();
 
-  /// 🔹 Solicita permiso para alarmas exactas (Android 12+)
-  Future<void> requestExactAlarmPermission() async {
-    final androidImplementation = _plugin
-        .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin
-        >();
-    await androidImplementation?.requestExactAlarmsPermission();
+  // Callback que la app puede asignar para manejar acciones desde notificaciones
+  // recibe payload (String?) y actionId (String?)
+  static void Function(String? payload, String? actionId)? onNotificationAction;
+
+  /// Permite registrar el callback más cómodamente
+  static void setOnNotificationAction(void Function(String? payload, String? actionId) cb) {
+    onNotificationAction = cb;
   }
 
   /// 🔹 Inicializa notificaciones y zonas horarias
@@ -33,7 +33,14 @@ class NotificationService {
     await _instance.initialize(
       settings,
       onDidReceiveNotificationResponse: (details) {
-        // Puedes manejar la acción del usuario aquí, según el payload.
+        // Reenvía a quien haya registrado el callback
+        final payload = details.payload;
+        final actionId = details.actionId;
+        try {
+          onNotificationAction?.call(payload, actionId);
+        } catch (e) {
+          // evitar que la app falle por error en callback
+        }
       },
     );
   }
@@ -45,20 +52,25 @@ class NotificationService {
     String body, {
     String? payload,
   }) async {
-    const androidDetails = AndroidNotificationDetails(
+    final actions = <AndroidNotificationAction>[
+      const AndroidNotificationAction('TAKEN', 'Tomada'),
+    ];
+
+    final androidDetails = AndroidNotificationDetails(
       'meditrack_channel',
       'Recordatorios',
       channelDescription: 'Notificaciones de recordatorios de medicamentos',
       importance: Importance.max,
       priority: Priority.high,
       playSound: true,
+      actions: actions,
     );
 
     await _instance.show(
       id,
       title,
       body,
-      const NotificationDetails(android: androidDetails),
+      NotificationDetails(android: androidDetails),
       payload: payload,
     );
   }
@@ -87,13 +99,18 @@ class NotificationService {
       scheduledDate = scheduledDate.add(const Duration(days: 1));
     }
 
-    const androidDetails = AndroidNotificationDetails(
+    final actions = <AndroidNotificationAction>[
+      const AndroidNotificationAction('TAKEN', 'Tomada'),
+    ];
+
+    final androidDetails = AndroidNotificationDetails(
       'meditrack_channel',
       'Recordatorios',
       channelDescription: 'Notificaciones de recordatorios de medicamentos',
       importance: Importance.max,
       priority: Priority.high,
       playSound: true,
+      actions: actions,
     );
 
     await _instance.zonedSchedule(
@@ -101,7 +118,7 @@ class NotificationService {
       title,
       body,
       scheduledDate,
-      const NotificationDetails(android: androidDetails),
+      NotificationDetails(android: androidDetails),
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       matchDateTimeComponents: DateTimeComponents.time, // 🔁 diario
       payload: payload,
@@ -124,13 +141,18 @@ class NotificationService {
       tzDateTime = tzDateTime.add(const Duration(days: 1));
     }
 
-    const androidDetails = AndroidNotificationDetails(
+    final actions = <AndroidNotificationAction>[
+      const AndroidNotificationAction('TAKEN', 'Tomada'),
+    ];
+
+    final androidDetails = AndroidNotificationDetails(
       'meditrack_channel',
       'Recordatorios',
       channelDescription: 'Notificaciones de recordatorios de medicamentos',
       importance: Importance.max,
       priority: Priority.high,
       playSound: true,
+      actions: actions,
     );
 
     await _instance.zonedSchedule(
@@ -138,7 +160,7 @@ class NotificationService {
       title,
       body,
       tzDateTime,
-      const NotificationDetails(android: androidDetails),
+      NotificationDetails(android: androidDetails),
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       payload: payload,
     );

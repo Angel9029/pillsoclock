@@ -25,23 +25,21 @@ class _ReminderCardState extends State<ReminderCard> {
   bool _isLoading = false;
 
   bool get isWithinTakeWindow {
-    if (!widget.reminder.containsKey('hour')) return false;
     final now = DateTime.now();
-    final reminderTime = TimeOfDay(
-      hour: widget.reminder['hour'],
-      minute: widget.reminder['minute'],
-    );
+    final times = (widget.reminder['times'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [];
+    if (times.isEmpty) return false;
 
-    final reminderDateTime = DateTime(
-      now.year,
-      now.month,
-      now.day,
-      reminderTime.hour,
-      reminderTime.minute,
-    );
-
-    final difference = now.difference(reminderDateTime).inMinutes;
-    return difference >= 0 && difference <= 60; // 1h de tolerancia
+    // buscar próxima hora programada para hoy
+    for (var t in times) {
+      final parts = t.split(':');
+      if (parts.length != 2) continue;
+      final h = int.tryParse(parts[0]) ?? 0;
+      final m = int.tryParse(parts[1]) ?? 0;
+      final scheduled = DateTime(now.year, now.month, now.day, h, m);
+      final diff = now.difference(scheduled).inMinutes;
+      if (diff >= 0 && diff <= 60) return true; // ventana 1h
+    }
+    return false;
   }
 
   Future<void> _markAsTaken() async {
@@ -92,14 +90,16 @@ class _ReminderCardState extends State<ReminderCard> {
   @override
   Widget build(BuildContext context) {
     final r = widget.reminder;
-    final isDoctorCreated = r['created_by_doctor'] == true;
+    final isDoctorCreated = (r['doctorId'] != null);
+    final times = (r['times'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [];
+    final timeText = times.isNotEmpty ? times.join(', ') : '-';
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       child: ListTile(
         title: Text(r['name'] ?? 'Sin nombre'),
         subtitle: Text(
-          'Hora: ${r['hour']}:${r['minute'].toString().padLeft(2, '0')}',
+          'Horas: $timeText',
         ),
         trailing: _isLoading
             ? const SizedBox(

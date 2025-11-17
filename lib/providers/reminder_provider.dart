@@ -2,6 +2,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/reminder_model.dart';
+import '../core/services/notification_service.dart';
+import 'package:timezone/timezone.dart' as tz;
 
 class ReminderProvider with ChangeNotifier {
   final _db = FirebaseFirestore.instance;
@@ -17,10 +19,34 @@ class ReminderProvider with ChangeNotifier {
         .collection('reminders')
         .where('userId', isEqualTo: userId)
         .snapshots()
-        .listen((snap) {
+        .listen((snap) async {
           reminders = snap.docs
               .map((d) => ReminderModel.fromFirestore(d))
               .toList();
+
+          // ✅ Programar notificaciones locales para cada reminder (cliente paciente)
+          for (var r in reminders) {
+            try {
+              await NotificationService.cancelNotificationsByPrefix(r.id);
+            } catch (_) {}
+            for (int i = 0; i < r.times.length; i++) {
+              final parts = r.times[i].split(':');
+              if (parts.length != 2) continue;
+              final hour = int.tryParse(parts[0]) ?? 0;
+              final minute = int.tryParse(parts[1]) ?? 0;
+              // id único por reminder+hora
+              final notifId = '${r.id}_$i'.hashCode;
+              await NotificationService.scheduleDailyNotification(
+                id: notifId,
+                title: 'Recordatorio: ${r.name}',
+                body: r.description.isNotEmpty ? r.description : 'Es hora de tu dosis',
+                hour: hour,
+                minute: minute,
+                payload: r.id,
+              );
+            }
+          }
+
           loading = false;
           notifyListeners();
         });
@@ -47,12 +73,14 @@ class ReminderProvider with ChangeNotifier {
     _sub?.cancel();
   }
 
-  Future<void> addReminder(ReminderModel reminder) async {
-    await _db.collection('reminders').add({
+  Future<String> addReminder(ReminderModel reminder) async {
+    final ref = await _db.collection('reminders').add({
       ...reminder.toFirestore(),
       'doctorId': reminder.doctorId,
       'immutable': reminder.immutable,
+      'createdAt': FieldValue.serverTimestamp(),
     });
+    return ref.id;
   }
 
   Future<void> updateReminder(ReminderModel reminder) async {

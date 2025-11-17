@@ -117,7 +117,7 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
     final remindersSnap = await FirebaseFirestore.instance
         .collection('reminders')
         .where('userId', isEqualTo: patientId)
-        .where('createdByDoctor', isEqualTo: widget.doctorId)
+        .where('doctorId', isEqualTo: widget.doctorId)
         .get();
 
     for (var doc in remindersSnap.docs) {

@@ -33,10 +33,11 @@ class ReminderService {
       'name': name,
       'description': description,
       'times': times,
-      'startDate': startDate.toIso8601String(),
-      'endDate': endDate?.toIso8601String(),
+      'startDate': Timestamp.fromDate(startDate),
+      'endDate': endDate != null ? Timestamp.fromDate(endDate) : null,
+      'takenDates': <Timestamp>[],
       'immutable': immutable,
-      'createdAt': DateTime.now().toIso8601String(),
+      'createdAt': FieldValue.serverTimestamp(),
     });
 
     // Programa notificaciones locales
@@ -99,7 +100,7 @@ class ReminderService {
     await _db.collection('reminders').doc(id).update(updates);
 
     // Si cambian las horas, reprograma notificaciones
-    if (updates.containsKey('times')) {
+    if (updates.containsKey('times') || updates.containsKey('startDate')) {
       final reminder = await _db.collection('reminders').doc(id).get();
       if (!reminder.exists) return;
 
@@ -107,10 +108,18 @@ class ReminderService {
       final name = data['name'] ?? 'Recordatorio';
       final desc = data['description'] ?? '';
       final times = List<String>.from(data['times'] ?? []);
-      final startDate =
-          DateTime.tryParse(data['startDate'] ?? '') ?? DateTime.now();
+      DateTime startDate;
+      final sd = data['startDate'];
+      if (sd is Timestamp) {
+        startDate = sd.toDate();
+      } else if (sd is String) {
+        startDate = DateTime.tryParse(sd) ?? DateTime.now();
+      } else {
+        startDate = DateTime.now();
+      }
 
-      await NotificationService.cancelAll();
+      // Cancela solo notificaciones asociadas a este reminder y reprograma
+      await NotificationService.cancelNotificationsByPrefix(id);
       await _scheduleReminderNotifications(id, name, desc, times, startDate);
     }
   }
@@ -119,7 +128,7 @@ class ReminderService {
   Future<void> deleteReminder(String id) async {
     await _db.collection('reminders').doc(id).delete();
 
-    // Cancela todas las notificaciones locales
-    await NotificationService.cancelAll();
+    // Cancela todas las notificaciones locales relacionadas
+    await NotificationService.cancelNotificationsByPrefix(id);
   }
 }

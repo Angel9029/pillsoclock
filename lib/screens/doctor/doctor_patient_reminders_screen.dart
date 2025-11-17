@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../models/reminder_model.dart';
 import '../../providers/reminder_provider.dart';
+import '../../core/services/notification_service.dart';
 
 class DoctorPatientRemindersScreen extends StatefulWidget {
   final String doctorId;
@@ -175,7 +176,7 @@ class _DoctorPatientRemindersScreenState
                         .toList();
 
                     if (reminder == null) {
-                      await prov.addReminder(
+                      final newId = await prov.addReminder(
                         ReminderModel(
                           id: '',
                           userId: widget.patientId,
@@ -189,6 +190,22 @@ class _DoctorPatientRemindersScreenState
                           immutable: true,
                         ),
                       );
+                      // opcional: reprogramar notifs localmente para el doctor
+                      await NotificationService.cancelNotificationsByPrefix(newId);
+                      for (int i = 0; i < times.length; i++) {
+                        final parts = times[i].split(':');
+                        if (parts.length != 2) continue;
+                        final hour = int.tryParse(parts[0]) ?? 0;
+                        final minute = int.tryParse(parts[1]) ?? 0;
+                        await NotificationService.scheduleDailyNotification(
+                          id: '${newId}_$i'.hashCode,
+                          title: 'Recordatorio (paciente): ${nameCtrl.text}',
+                          body: descCtrl.text.isNotEmpty ? descCtrl.text : 'Recordatorio creado por doctor',
+                          hour: hour,
+                          minute: minute,
+                          payload: newId,
+                        );
+                      }
                     } else {
                       await prov.updateReminder(
                         reminder.copyWith(
@@ -199,6 +216,22 @@ class _DoctorPatientRemindersScreenState
                           endDate: endDate,
                         ),
                       );
+                      // reprogramar localmente para consistencia del doctor
+                      await NotificationService.cancelNotificationsByPrefix(reminder.id);
+                      for (int i = 0; i < times.length; i++) {
+                        final parts = times[i].split(':');
+                        if (parts.length != 2) continue;
+                        final hour = int.tryParse(parts[0]) ?? 0;
+                        final minute = int.tryParse(parts[1]) ?? 0;
+                        await NotificationService.scheduleDailyNotification(
+                          id: '${reminder.id}_$i'.hashCode,
+                          title: 'Recordatorio (paciente): ${nameCtrl.text}',
+                          body: descCtrl.text.isNotEmpty ? descCtrl.text : 'Recordatorio creado por doctor',
+                          hour: hour,
+                          minute: minute,
+                          payload: reminder.id,
+                        );
+                      }
                     }
 
                     Navigator.pop(ctx);
