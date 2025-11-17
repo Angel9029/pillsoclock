@@ -35,13 +35,12 @@ class MyApp extends StatelessWidget {
       providers: [ChangeNotifierProvider(create: (_) => AuthProviderLocal())],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
-        title: 'Pills O\'Clock',
+        title: 'Arte dental',
         theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.teal),
-        home: const SplashScreen(), // 👈 inicia con el splash
+        home: const SplashScreen(),
         routes: {
           '/auth': (context) => const AuthScreen(),
           '/patientHome': (context) => const PatientHome(),
-          // '/doctorHome': (context) => const DoctorHome(doctorId: user.uid),
           '/adminHome': (context) => const AdminHome(),
         },
       ),

@@ -59,7 +59,7 @@ class _LoginScreenState extends State<LoginScreen> {
               children: [
                 const Icon(Icons.local_hospital_rounded, size: 84, color: Colors.teal),
                 const SizedBox(height: 12),
-                const Text('Pills o\' Clock', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
+                const Text('Arte Dental', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 6),
                 const Text('Control de toma de medicamentos', style: TextStyle(color: Colors.black54)),
                 const SizedBox(height: 20),

@@ -243,12 +243,11 @@ class _RemindersScreenState extends State<RemindersScreen> {
                       );
                 });
 
-                final hasTakenToday = r.takenDates.any(
-                  (d) =>
-                      d.year == now.year &&
-                      d.month == now.month &&
-                      d.day == now.day,
-                );
+                // ✅ Revisa si ya existe una toma dentro de esta ventana
+                bool hasTakenInCurrentWindow = r.takenDates.any((d) {
+                  final diff = now.difference(d).inMinutes.abs();
+                  return diff <= 30;
+                });
 
                 final progress = prov.computeProgress(r);
 
@@ -260,12 +259,15 @@ class _RemindersScreenState extends State<RemindersScreen> {
                   child: ListTile(
                     title: Text(r.name),
                     subtitle: Text(
-                      'Horas: ${r.times.join(', ')}\nInicio: ${DateFormat('dd/MM/yyyy').format(r.startDate)}\nFin: ${r.endDate != null ? DateFormat('dd/MM/yyyy').format(r.endDate!) : "-"}\nProgreso: ${(progress * 100).toStringAsFixed(0)}%',
+                      'Horas: ${r.times.join(', ')}\n'
+                      'Inicio: ${DateFormat('dd/MM/yyyy').format(r.startDate)}\n'
+                      'Fin: ${r.endDate != null ? DateFormat('dd/MM/yyyy').format(r.endDate!) : "-"}\n'
+                      'Progreso: ${(progress * 100).toStringAsFixed(0)}%',
                     ),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        if (isWithinTakeWindow && !hasTakenToday)
+                        if (isWithinTakeWindow && !hasTakenInCurrentWindow)
                           IconButton(
                             icon: const Icon(Icons.check, color: Colors.green),
                             onPressed: () async {
@@ -275,6 +277,7 @@ class _RemindersScreenState extends State<RemindersScreen> {
                                   content: Text('Toma registrada ✅'),
                                 ),
                               );
+                              setState(() {}); // 🔹 refresca la vista
                             },
                           ),
                         if (!r.immutable)

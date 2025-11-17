@@ -9,7 +9,7 @@ class ReminderProvider with ChangeNotifier {
   bool loading = true;
   StreamSubscription? _sub;
 
-  // Para pacientes: stream de sus propios reminders
+  // 🔹 Pacientes: stream de sus propios recordatorios
   void startForUser(String userId) {
     loading = true;
     notifyListeners();
@@ -26,7 +26,7 @@ class ReminderProvider with ChangeNotifier {
         });
   }
 
-  // Para doctor: stream de reminders creados por este doctor
+  // 🔹 Doctor: stream de recordatorios creados por este doctor
   void startForDoctor(String doctorId) {
     loading = true;
     notifyListeners();
@@ -68,13 +68,28 @@ class ReminderProvider with ChangeNotifier {
     await _db.collection('reminders').doc(id).delete();
   }
 
+  /// ✅ Marca un recordatorio como tomado hoy y actualiza lista local
   Future<void> markTaken(String reminderId) async {
-    final doc = await _db.collection('reminders').doc(reminderId).get();
+    final docRef = _db.collection('reminders').doc(reminderId);
+    final doc = await docRef.get();
+    if (!doc.exists) return;
+
     final r = ReminderModel.fromFirestore(doc);
-    final updated = r.takenDates..add(DateTime.now());
-    await _db.collection('reminders').doc(reminderId).update({
-      'takenDates': updated.map((d) => Timestamp.fromDate(d)).toList(),
+    final updatedTakenDates = [...r.takenDates, DateTime.now()];
+
+    // Actualiza en Firestore
+    await docRef.update({
+      'takenDates': updatedTakenDates
+          .map((d) => Timestamp.fromDate(d))
+          .toList(),
     });
+
+    // 🔹 Actualiza la lista local (para refrescar UI al instante)
+    final index = reminders.indexWhere((rem) => rem.id == reminderId);
+    if (index != -1) {
+      reminders[index] = r.copyWith(takenDates: updatedTakenDates);
+      notifyListeners();
+    }
   }
 
   double computeProgress(ReminderModel reminder) {
@@ -89,6 +104,7 @@ class ReminderProvider with ChangeNotifier {
   }
 }
 
+// 🔹 Extensión para guardar en Firestore
 extension on ReminderModel {
   Map<String, dynamic> toFirestore() => {
     'userId': userId,

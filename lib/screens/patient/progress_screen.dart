@@ -14,9 +14,7 @@ class ProgressScreen extends StatelessWidget {
     final progressProv = Provider.of<ProgressProvider>(context, listen: false);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Progreso de Medicación'),
-      ),
+      appBar: AppBar(title: const Text('Progreso de Medicación')),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection('reminders')
@@ -54,9 +52,8 @@ class ProgressScreen extends StatelessWidget {
                       ?.map((e) => e.toString())
                       .toList() ??
                   [];
-              final takenDatesLenght = data['takenDates'].length ?? 0;
+              final takenDates = (data['takenDates'] as List<dynamic>?) ?? [];
 
-              // 🔹 Conversiones seguras de Timestamp o String
               DateTime? toDate(dynamic v) {
                 if (v == null) return null;
                 if (v is Timestamp) return v.toDate();
@@ -67,22 +64,24 @@ class ProgressScreen extends StatelessWidget {
               final startDate = toDate(data['startDate']);
               final endDate = toDate(data['endDate']);
 
-              return FutureBuilder<double>(
-                future: progressProv.computeProgressFromFirestore(doc.id),
-                builder: (context, progressSnap) {
-                  final progress = progressSnap.data ?? 0.0;
+              // 🔹 Calculamos el progreso directamente
+              final totalDays = endDate != null
+                  ? endDate.difference(startDate!).inDays + 1
+                  : 30;
+              final totalExpected = totalDays * times.length;
+              final progress = totalExpected == 0
+                  ? 0.0
+                  : (takenDates.length / totalExpected).clamp(0.0, 1.0);
 
-                  return ProgressCard(
-                    reminderId: doc.id,
-                    name: name,
-                    description: description,
-                    times: times,
-                    startDate: startDate,
-                    endDate: endDate,
-                    progress: (progress),
-                    takenDatesLenght: takenDatesLenght,
-                  );
-                },
+              return ProgressCard(
+                reminderId: doc.id,
+                name: name,
+                description: description,
+                times: times,
+                startDate: startDate,
+                endDate: endDate,
+                progress: progress,
+                takenDatesLenght: takenDates.length,
               );
             },
           );
